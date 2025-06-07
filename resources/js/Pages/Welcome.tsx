@@ -1,80 +1,89 @@
+import BlueprintCard from '@/Components/BlueprintCard';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import GuestLayout from '@/Layouts/GuestLayout';
 import { PageProps } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
+
+interface Blueprint {
+    id: string;
+    name: string;
+    description?: string;
+    status: 'public' | 'private';
+    php_version: string;
+    wordpress_version: string;
+    steps: unknown[];
+    created_at: string;
+    updated_at: string;
+    is_anonymous: boolean;
+    statistics?: {
+        views_count: number;
+        runs_count: number;
+        last_viewed_at?: string;
+        last_run_at?: string;
+    };
+}
 
 export default function Welcome({
     auth,
     blueprints,
 }: PageProps<{
-    blueprints: any[];
+    blueprints: Blueprint[];
 }>) {
-    const handleImageError = () => {
-        document
-            .getElementById('screenshot-container')
-            ?.classList.add('!hidden');
-        document.getElementById('docs-card')?.classList.add('!row-span-1');
-        document
-            .getElementById('docs-card-content')
-            ?.classList.add('!flex-row');
-        document.getElementById('background')?.classList.add('!hidden');
-    };
-
-    return (
+    const content = (
         <>
             <Head title="Welcome" />
-            <div className="bg-gray-50 text-black/50 dark:bg-black dark:text-white/50">
-                <div className="relative flex min-h-screen flex-col items-center justify-center selection:bg-[#FF2D20] selection:text-white">
-                    <div className="relative w-full max-w-2xl px-6 lg:max-w-7xl">
-                        <header className="grid grid-cols-2 items-center gap-2 py-10 lg:grid-cols-3">
-                            <nav className="-mx-3 flex flex-1 justify-end">
-                                {auth.user ? (
-                                    <Link
-                                        href={route('dashboard')}
-                                        className="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
-                                    >
-                                        Dashboard
-                                    </Link>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href={route('login')}
-                                            className="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
-                                        >
-                                            Log in
-                                        </Link>
-                                        <Link
-                                            href={route('register')}
-                                            className="rounded-md px-3 py-2 text-black ring-1 ring-transparent transition hover:text-black/70 focus:outline-none focus-visible:ring-[#FF2D20] dark:text-white dark:hover:text-white/80 dark:focus-visible:ring-white"
-                                        >
-                                            Register
-                                        </Link>
-                                    </>
-                                )}
-                            </nav>
-                        </header>
-
-                        <main className="mt-6">
-                            <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-                                <div className="blueprints">
-                                    <h2 className="text-xl font-semibold text-black dark:text-white">
-                                        Latest Blueprints
-                                    </h2>
-                                    <ul>
-                                        {blueprints.map((blueprint, index) => (
-                                            <li
-                                                key={index}
-                                                className="blueprint-item"
-                                            >
-                                                {blueprint.name}
-                                            </li>
-                                        ))}
-                                    </ul>
+            <div className="py-12">
+                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                    <div className="mb-8">
+                        <h2 className="mb-6 text-2xl font-bold text-black dark:text-white">
+                            Latest Blueprints
+                        </h2>
+                        {blueprints.length === 0 ? (
+                            <div className="py-12 text-center">
+                                <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg dark:bg-gray-800">
+                                    <div className="p-6 text-gray-900 dark:text-gray-100">
+                                        <div className="mb-4 text-lg font-medium">
+                                            No blueprints available
+                                        </div>
+                                        <p className="mb-6 text-gray-600 dark:text-gray-400">
+                                            Check back later for new WordPress
+                                            blueprints
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </main>
-
+                        ) : (
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {blueprints.map((blueprint) => (
+                                    <BlueprintCard
+                                        key={blueprint.id}
+                                        blueprint={blueprint}
+                                        showActions={false}
+                                        showStatus={false}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
         </>
     );
+
+    // Use AuthenticatedLayout if user is logged in, otherwise use GuestLayout
+    if (auth.user) {
+        return (
+            <AuthenticatedLayout
+                header={
+                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+                        Welcome
+                    </h2>
+                }
+            >
+                {content}
+            </AuthenticatedLayout>
+        );
+    }
+
+    return <GuestLayout>{content}</GuestLayout>;
 }

@@ -29,7 +29,7 @@ export default function Login({
     };
 
     return (
-        <GuestLayout>
+        <GuestLayout narrow>
             <Head title="Log in" />
 
             {status && (

@@ -5,6 +5,7 @@ use App\Http\Controllers\BlueprintController;
 use App\Models\Blueprint;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -16,7 +17,15 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
+    $user = Auth::user();
+    $blueprints = $user ? Blueprint::where('user_id', $user->id)
+        ->with('statistics')
+        ->latest()
+        ->get() : collect();
+        
+    return Inertia::render('Dashboard', [
+        'blueprints' => $blueprints
+    ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {

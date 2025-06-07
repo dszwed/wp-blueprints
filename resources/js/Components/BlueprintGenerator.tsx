@@ -285,7 +285,7 @@ function BlueprintGenerator() {
                                         searchPlugins(e.target.value);
                                     }}
                                     placeholder="Search WordPress plugins..."
-                                    className="w-full rounded-md border-gray-300 py-2 pl-10 pr-4 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:border-gray-600 dark:focus:border-indigo-400"
+                                    className="w-full rounded-md border-gray-300 py-2 pl-10 pr-4 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-indigo-400"
                                 />
                                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                                     {isSearching ? (
@@ -314,7 +314,7 @@ function BlueprintGenerator() {
                                         }}
                                         role="button"
                                         tabIndex={0}
-                                        onKeyPress={(e) => {
+                                        onKeyDown={(e) => {
                                             if (
                                                 e.key === 'Enter' ||
                                                 e.key === ' '
