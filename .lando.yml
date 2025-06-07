@@ -1,0 +1,10 @@
+name: blueprints123
+recipe: laravel
+config:
+  webroot: public
+  via: nginx
+  php: 8.2
+
+  services:
+    phpmyadmin:
+      type: phpmyadmin
