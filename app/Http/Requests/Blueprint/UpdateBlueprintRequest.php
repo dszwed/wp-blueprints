@@ -12,9 +12,16 @@ class UpdateBlueprintRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Only allow updates if user is authenticated and owns the blueprint
-        // or if the blueprint is anonymous and can be updated by anyone
-        return $this->user() !== null || $this->route('blueprint')->is_anonymous;
+        $blueprint = $this->route('blueprint');
+        $user = $this->user();
+        
+        // User must be authenticated (handled by middleware)
+        if (!$user) {
+            return false;
+        }
+        
+        // User can only update their own blueprints
+        return $blueprint->user_id === $user->id;
     }
 
     public function rules(): array

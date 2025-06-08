@@ -29,7 +29,9 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::post('/blueprint', [BlueprintController::class, 'store'])->name('blueprints.store');
-Route::patch('/blueprint/{blueprint}', [BlueprintController::class, 'update'])->name('blueprints.update');
+Route::patch('/blueprint/{blueprint}', [BlueprintController::class, 'update'])
+    ->middleware('auth')
+    ->name('blueprints.update');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
