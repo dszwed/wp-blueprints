@@ -69,18 +69,26 @@ export default function BlueprintCard({
                     </div>
                     <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                         <span className="font-medium">WordPress:</span>
-                        <span className="ml-1">{blueprint.wordpress_version}</span>
+                        <span className="ml-1">
+                            {blueprint.wordpress_version}
+                        </span>
                     </div>
                     <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                         <span className="font-medium">Steps:</span>
-                        <span className="ml-1">{blueprint.steps?.length || 0}</span>
+                        <span className="ml-1">
+                            {blueprint.steps?.length || 0}
+                        </span>
                     </div>
                 </div>
 
                 {blueprint.statistics && (
                     <div className="mb-4 flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
                         <div className="flex items-center">
-                            <svg className="mr-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <svg
+                                className="mr-1 h-4 w-4"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                            >
                                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                                 <path
                                     fillRule="evenodd"
@@ -91,7 +99,11 @@ export default function BlueprintCard({
                             {blueprint.statistics.views_count}
                         </div>
                         <div className="flex items-center">
-                            <svg className="mr-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <svg
+                                className="mr-1 h-4 w-4"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                            >
                                 <path
                                     fillRule="evenodd"
                                     d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
@@ -111,7 +123,9 @@ export default function BlueprintCard({
                         <div className="flex flex-col space-y-2">
                             <a
                                 href={`https://playground.wordpress.net/?blueprint-url=${encodeURIComponent(
-                                    window.location.origin + '/blueprint/' + blueprint.id
+                                    window.location.origin +
+                                        '/blueprint/' +
+                                        blueprint.id,
                                 )}`}
                                 target="_blank"
                                 rel="noreferrer"
@@ -164,11 +178,14 @@ export default function BlueprintCard({
                                 onClick={async () => {
                                     const url = `${window.location.origin}/blueprint/${blueprint.id}`;
                                     try {
-                                        await navigator.clipboard.writeText(url);
+                                        await navigator.clipboard.writeText(
+                                            url,
+                                        );
                                         // You could add a toast notification here
                                     } catch (err) {
                                         // Fallback for older browsers
-                                        const textArea = document.createElement('textarea');
+                                        const textArea =
+                                            document.createElement('textarea');
                                         textArea.value = url;
                                         document.body.appendChild(textArea);
                                         textArea.select();
@@ -199,4 +216,4 @@ export default function BlueprintCard({
             </div>
         </div>
     );
-} 
+}

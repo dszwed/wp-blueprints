@@ -28,6 +28,8 @@ Route::get('/dashboard', function () {
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::post('/blueprints', [BlueprintController::class, 'store'])->name('blueprints.store');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -35,10 +37,26 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('/generator', function () {
-    // Logic for the generator
-    return Inertia::render('Generator', [
-    ]);
+    $data = [
+        'phpVersions' => \App\Enums\PhpVersion::values(),
+        'wordpressVersions' => \App\Enums\WordpressVersion::values(),
+    ];
+    
+    // Include any flashed data from blueprint creation
+    if (session()->has('data')) {
+        $data['data'] = session()->get('data');
+    }
+    
+    return Inertia::render('Generator', $data);
 })->name('generator');
+
+// Handle preflight OPTIONS requests for CORS
+Route::options('/blueprint/{id}', function () {
+    return response('')
+        ->header('Access-Control-Allow-Origin', 'https://playground.wordpress.net')
+        ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+});
 
 Route::get('/blueprint/{id}', function ($id) {
     $blueprint = Blueprint::findOrFail($id);
@@ -64,7 +82,10 @@ Route::get('/blueprint/{id}', function ($id) {
         'steps' => $blueprint->steps ?? []
     ];
     
-    return response()->json($playgroundBlueprint);
+    return response()->json($playgroundBlueprint)
+        ->header('Access-Control-Allow-Origin', 'https://playground.wordpress.net')
+        ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 })->name('blueprint.show');
 
 require __DIR__.'/auth.php';

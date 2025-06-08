@@ -10,22 +10,21 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use App\Enums\PhpVersion;
 use App\Enums\WordpressVersion;
-use Inertia\Testing\AssertableInertia as Assert;
 
 class BlueprintControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authenticated_user_can_create_blueprint_via_web(): void
+    public function test_authenticated_user_can_create_blueprint(): void
     {
         /** @var \App\Models\User $user */
         $user = User::factory()->create();
         
         $response = $this->actingAs($user)
-            ->post('/blueprints', [
-                'name' => 'Test Web Blueprint',
+            ->postJson('/blueprints', [
+                'name' => 'Test Blueprint',
                 'status' => 'public',
-                'landingPage' => '/wp-admin/',
+                'landingPage' => 'example.com',
                 'preferredVersions' => [
                     'php' => PhpVersion::V8_2->value,
                     'wp' => WordpressVersion::V6_8->value,
@@ -34,147 +33,142 @@ class BlueprintControllerTest extends TestCase
                     'networking' => true,
                 ],
                 'steps' => [
-                    ['step' => 'install-plugin', 'plugin' => 'woocommerce'],
+                    ['step' => 'initialization'],
                 ],
             ]);
 
-        $response->assertStatus(200);
-        
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Generator')
-            ->has('data')
-            ->where('data.name', 'Test Web Blueprint')
-            ->where('data.status', 'public')
-            ->where('data.is_anonymous', false)
-            ->has('data.id')
-        );
-
-        $this->assertDatabaseHas('blueprints', [
-            'name' => 'Test Web Blueprint',
-            'status' => 'public',
-            'user_id' => $user->id,
-        ]);
+        $response->assertStatus(201)
+            ->assertJsonStructure([
+                'data' => [
+                    'id',
+                    'name',
+                    'description',
+                    'status',
+                    'php_version',
+                    'wordpress_version',
+                    'steps',
+                    'created_at',
+                    'updated_at',
+                    'is_anonymous',
+                ],
+            ])
+            ->assertJson([
+                'data' => [
+                    'name' => 'Test Blueprint',
+                    'status' => 'public',
+                    'steps' => [
+                        ['step' => 'initialization'],
+                    ],
+                    'is_anonymous' => false,
+                ],
+            ]);
     }
 
-    public function test_unauthenticated_user_is_redirected_to_login(): void
+    public function test_anonymous_user_can_create_blueprint(): void
     {
-        $response = $this->post('/blueprints', [
-            'name' => 'Test Blueprint',
-            'status' => 'public',
-            'landingPage' => '/wp-admin/',
+        $response = $this->postJson('/blueprints', [
+            'name' => 'Anonymous Blueprint',
+            'status' => 'private',
+            'landingPage' => 'example.com',
             'preferredVersions' => [
-                'php' => PhpVersion::V8_2->value,
-                'wp' => WordpressVersion::V6_8->value,
+                'php' => PhpVersion::V8_1->value,
+                'wp' => WordpressVersion::V6_7->value,
             ],
             'features' => [
                 'networking' => true,
             ],
             'steps' => [
-                ['step' => 'install-plugin', 'plugin' => 'woocommerce'],
+                ['step' => 'initialization'],
             ],
         ]);
 
-        $response->assertRedirect('/login');
+        $response->assertStatus(201)
+            ->assertJsonStructure([
+                'data' => [
+                    'id',
+                    'name',
+                    'description',
+                    'status',
+                    'php_version',
+                    'wordpress_version',
+                    'steps',
+                    'created_at',
+                    'updated_at',
+                    'is_anonymous',
+                ],
+            ])
+            ->assertJson([
+                'data' => [
+                    'name' => 'Anonymous Blueprint',
+                    'status' => 'private',
+                    'steps' => [
+                        ['step' => 'initialization'],
+                    ],
+                    'is_anonymous' => true,
+                ],
+            ]);
     }
 
-    public function test_validation_fails_with_invalid_data_via_web(): void
+    public function test_validation_fails_with_invalid_data(): void
     {
-        /** @var \App\Models\User $user */
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)
-            ->from('/generator')
-            ->post('/blueprints', [
-                'name' => '', // Invalid: empty name
-                'status' => 'invalid', // Invalid: not in enum
-                'landingPage' => '',
-                'preferredVersions' => [
-                    'php' => 'invalid',
-                    'wp' => 'invalid',
-                ],
-                'features' => [
-                    'networking' => 'not-a-boolean',
-                ],
-                'steps' => 'not-an-array',
-            ]);
-
-        $response->assertRedirect('/generator');
-        $response->assertSessionHasErrors([
-            'name',
-            'status', 
-            'landingPage',
-            'preferredVersions.php',
-            'preferredVersions.wp',
-            'features.networking',
-            'steps',
+        $response = $this->postJson('/blueprints', [
+            'name' => '',
+            'status' => 'invalid',
+            'landingPage' => '',
+            'preferredVersions' => [
+                'php' => 'invalid',
+                'wp' => 'invalid',
+            ],
+            'features' => [
+                'networking' => 'not-a-boolean',
+            ],
+            'steps' => 'not-an-array',
         ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors([
+                'name',
+                'status',
+                'landingPage',
+                'preferredVersions.php',
+                'preferredVersions.wp',
+                'features.networking',
+                'steps',
+            ]);
     }
 
-    public function test_blueprint_creation_with_minimal_data(): void
+    public function test_validation_error_response_format(): void
     {
-        /** @var \App\Models\User $user */
-        $user = User::factory()->create();
-        
-        $response = $this->actingAs($user)
-            ->post('/blueprints', [
-                'name' => 'Minimal Blueprint',
-                'status' => 'public',
-                'landingPage' => '/wp-admin/',
-                'preferredVersions' => [
-                    'php' => PhpVersion::V8_2->value,
-                    'wp' => WordpressVersion::V6_8->value,
+        $response = $this->postJson('/blueprints', [
+            'name' => 'Test Blueprint',
+            'status' => 'public',
+            'landingPage' => '/wp-admin/',
+            'preferredVersions' => [
+                'php' => '8.2',
+                'wp' => 'latest', // Invalid version - not in enum
+            ],
+            'features' => [
+                'networking' => true,
+            ],
+            'steps' => [
+                ['step' => 'initialization'],
+            ],
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonStructure([
+                'message',
+                'errors' => [
+                    'preferredVersions.wp',
                 ],
-                'features' => [
-                    'networking' => true,
-                ],
-                'steps' => [
-                    ['step' => 'login', 'username' => 'admin', 'password' => 'password'],
+            ])
+            ->assertJson([
+                'message' => 'The WordPress version must be one of: 6.8, 6.7, 6.6, 6.5, 6.4, 6.3, 6.2, 6.1, 6.0, 5.9, 5.8, 5.7, 5.6, 5.5, 5.4, 5.3, 5.2, 5.1, 5.0.',
+                'errors' => [
+                    'preferredVersions.wp' => [
+                        'The WordPress version must be one of: 6.8, 6.7, 6.6, 6.5, 6.4, 6.3, 6.2, 6.1, 6.0, 5.9, 5.8, 5.7, 5.6, 5.5, 5.4, 5.3, 5.2, 5.1, 5.0.',
+                    ],
                 ],
             ]);
-
-        $response->assertStatus(200);
-        
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Generator')
-            ->has('data')
-            ->where('data.name', 'Minimal Blueprint')
-            ->has('data.steps')
-        );
-    }
-
-    public function test_blueprint_creation_with_complex_steps(): void
-    {
-        /** @var \App\Models\User $user */
-        $user = User::factory()->create();
-        
-        $complexSteps = [
-            ['step' => 'install-plugin', 'plugin' => 'woocommerce'],
-            ['step' => 'login', 'username' => 'admin', 'password' => 'password'],
-            ['step' => 'install-plugin', 'plugin' => 'yoast-seo'],
-        ];
-
-        $response = $this->actingAs($user)
-            ->post('/blueprints', [
-                'name' => 'Complex Blueprint',
-                'status' => 'public',
-                'landingPage' => '/wp-admin/',
-                'preferredVersions' => [
-                    'php' => PhpVersion::V8_1->value,
-                    'wp' => WordpressVersion::V6_7->value,
-                ],
-                'features' => [
-                    'networking' => false,
-                ],
-                'steps' => $complexSteps,
-            ]);
-
-        $response->assertStatus(200);
-        
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Generator')
-            ->has('data')
-            ->where('data.name', 'Complex Blueprint')
-            ->has('data.steps', 3) // Should have 3 steps
-        );
     }
 } 

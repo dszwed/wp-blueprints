@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import {
     Copy,
     Download,
@@ -9,7 +10,6 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
-import { router } from '@inertiajs/react';
 import ErrorHandler from './ErrorHandler';
 import InputError from './InputError';
 
@@ -38,59 +38,65 @@ interface Blueprint {
     }[];
 }
 
-const phpVersions = ['8.2', '8.1', '8.0', '7.4', '7.3', '7.2', '7.1', '7.0'];
-const wordpressVersions = [
-    '6.8',
-    '6.7',
-    '6.6',
-    '6.5',
-    '6.4',
-    '6.3',
-    '6.2',
-    '6.1',
-    '6.0',
-    '5.9',
-    '5.8',
-    '5.7',
-    '5.6',
-    '5.5',
-    '5.4',
-    '5.3',
-    '5.2',
-    '5.1',
-    '5.0',
-];
+interface BlueprintGeneratorProps {
+    phpVersions: string[];
+    wordpressVersions: string[];
+    initialData?: {
+        id?: string;
+        name?: string;
+        status?: string;
+        php_version?: string;
+        wordpress_version?: string;
+        steps?: Array<{
+            step: string;
+            username?: string;
+            password?: string;
+            plugin?: string;
+        }>;
+        is_anonymous?: boolean;
+    };
+}
 
-function BlueprintGenerator() {
+function BlueprintGenerator({
+    phpVersions,
+    wordpressVersions,
+    initialData,
+}: BlueprintGeneratorProps) {
     const [blueprint, setBlueprint] = useState<Blueprint>({
-        name: '',
-        landingPage: '/wp-admin/',
+        name: initialData?.name || '',
+        landingPage: initialData?.wordpress_version
+            ? '/wp-admin/'
+            : '/wp-admin/',
         preferredVersions: {
-            php: '8.2',
-            wp: '6.8',
+            php: initialData?.php_version || '8.2',
+            wp: initialData?.wordpress_version || '6.8',
         },
         features: {
             networking: true,
         },
-        steps: [
+        steps: initialData?.steps || [
             {
                 step: 'install-plugin',
-                plugin: 'default-plugin',
+                username: '',
+                password: '',
+                plugin: '',
             },
         ],
     });
 
-    const [searchQuery, setSearchQuery] = useState<string>('');
     const [searchResults, setSearchResults] = useState<Plugin[]>([]);
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [isSearching, setIsSearching] = useState<boolean>(false);
     const [isSaved, setIsSaved] = useState<boolean>(false);
-    const [savedId, setSavedId] = useState<string | null>(null);
+    const [savedId, setSavedId] = useState<string | null>(
+        initialData?.id || null,
+    );
     const [error, setError] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<{
         name?: string;
+        landingPage?: string;
         'preferredVersions.php'?: string;
         'preferredVersions.wp'?: string;
-        landingPage?: string;
         'features.networking'?: string;
         steps?: string;
         status?: string;
@@ -208,8 +214,10 @@ function BlueprintGenerator() {
                 onSuccess: (page) => {
                     // Clear validation errors on success
                     setValidationErrors({});
-                    const responseData = page.props.data as unknown;
-                    setSavedId(responseData?.id || null);
+                    const responseData = page.props.data as {
+                        data?: { id?: string };
+                    };
+                    setSavedId(responseData?.data?.id || null);
                     setIsSaved(true);
                     setError(null);
                 },
@@ -227,7 +235,10 @@ function BlueprintGenerator() {
     };
 
     const openInPlayground = () => {
-        const playgroundUrl = `https://playground.wordpress.net/?blueprint=${savedId}`;
+        if (!savedId) return;
+        const blueprintUrl = `${window.location.origin}/blueprint/${savedId}`;
+        const playgroundUrl = `https://playground.wordpress.net/?blueprint-url=${encodeURIComponent(blueprintUrl)}`;
+        console.log(blueprintUrl);
         window.open(playgroundUrl, '_blank');
     };
 

@@ -9,6 +9,7 @@ use App\Http\Resources\BlueprintResource;
 use App\Services\BlueprintService;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Http\RedirectResponse;
 
 class BlueprintController extends Controller
 {
@@ -17,7 +18,7 @@ class BlueprintController extends Controller
     ) {
     }
 
-    public function store(CreateBlueprintRequest $request): Response
+    public function store(CreateBlueprintRequest $request): RedirectResponse
     {
         $blueprint = $this->blueprintService->create(
             $request->validated(),
@@ -26,8 +27,6 @@ class BlueprintController extends Controller
 
         $blueprintData = new BlueprintResource($blueprint);
 
-        return Inertia::render('Generator', [
-            'data' => $blueprintData->resolve()
-        ]);
+        return redirect()->route('generator')->with('data', $blueprintData);
     }
 } 
