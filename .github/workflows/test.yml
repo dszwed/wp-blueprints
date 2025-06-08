@@ -1,14 +1,17 @@
 name: Test Laravel Application
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+  workflow_call:
+    inputs:
+      app_built:
+        required: true
+        type: boolean
+        description: 'Whether the application has been built'
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    if: ${{ inputs.app_built == true }}
 
     services:
       mysql:

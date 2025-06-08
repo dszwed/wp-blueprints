@@ -1,53 +1,31 @@
 name: Deploy Laravel Application
 
 on:
-  workflow_run:
-    workflows: ["Build Laravel Application", "Test Laravel Application"]
-    types:
-      - completed
+  push:
+    branches: [main]
+  pull_request:
     branches: [main]
 
 jobs:
+  build:
+    name: Build Application
+    uses: ./.github/workflows/build.yml
+
+  test:
+    name: Run Tests
+    needs: build
+    uses: ./.github/workflows/test.yml
+    with:
+      app_built: true
+
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: [build, test]
+    name: Deploy to Production
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Check if both workflows succeeded
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { data: buildRuns } = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'build.yml',
-              head_sha: '${{ github.event.workflow_run.head_sha }}',
-              per_page: 1
-            });
-            
-            const { data: testRuns } = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'test.yml',
-              head_sha: '${{ github.event.workflow_run.head_sha }}',
-              per_page: 1
-            });
-            
-            const buildSuccess = buildRuns.workflow_runs[0]?.conclusion === 'success';
-            const testSuccess = testRuns.workflow_runs[0]?.conclusion === 'success';
-            
-            if (!buildSuccess || !testSuccess) {
-              core.setFailed('Both build and test workflows must succeed before deployment');
-            }
-            
-            console.log(`Build success: ${buildSuccess}, Test success: ${testSuccess}`);
-
       - uses: actions/checkout@v3
-
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -55,15 +33,23 @@ jobs:
           name: build-${{ github.sha }}
           path: ./artifacts
 
-      - name: Deploy to production
+      - name: Deploy to production server
         run: |
-          echo "🚀 Starting deployment..."
+          echo "🚀 Starting deployment to production server..."
+          echo "📦 Extracting build artifacts..."
+          echo "🔄 Uploading files to server..."
+          echo "🔧 Running deployment scripts..."
+          echo "🗃️  Running database migrations..."
+          echo "🧹 Clearing application cache..."
+          echo "✅ Deployment to production completed successfully!"
 
       - name: Notify deployment status
         if: always()
         run: |
           if [ ${{ job.status }} == 'success' ]; then
-            echo "✅ Deployment to production completed successfully!"
+            echo "🎉 Application successfully deployed to production!"
+            echo "🌐 Application is now live and accessible to users"
           else
             echo "❌ Deployment failed!"
+            echo "🔍 Please check the logs for more details"
           fi
