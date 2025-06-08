@@ -53,7 +53,12 @@ class BlueprintService
 
     public function create(array $data, ?User $user = null): Blueprint
     {
-        $blueprint = new Blueprint($data);
+        $blueprint = new Blueprint([
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'status' => $data['status'],
+            'steps' => $data['steps'],
+        ]);
         
         if ($user) {
             $blueprint->user_id = $user->id;
