@@ -1,88 +1,69 @@
 name: Deploy Laravel Application
 
 on:
-  push:
-    branches: [ main ]
+  workflow_run:
+    workflows: ["Build Laravel Application", "Test Laravel Application"]
+    types:
+      - completed
+    branches: [main]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: mbstring, dom, fileinfo, mysql
-          coverage: xdebug
-
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Copy .env
-        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
-
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Generate key
-        run: php artisan key:generate
-
-      - name: Install JS dependencies
-        run: npm ci
-
-      - name: Build assets
-        run: npm run build
-
-      - name: Run tests
-        run: php artisan test
-
-      - name: Create deployment package
-        run: |
-          mkdir -p artifact
-          cp -R app bootstrap config database public resources routes storage vendor composer.json composer.lock .env artifact/
-          cp -R public/build artifact/public/ || true
-          tar -czf deployment.tar.gz -C artifact .
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: deployment-package
-          path: deployment.tar.gz
-
   deploy:
-    needs: build
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v3
+      - name: Check if both workflows succeeded
+        uses: actions/github-script@v6
         with:
-          name: deployment-package
+          script: |
+            const { data: buildRuns } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build.yml',
+              head_sha: '${{ github.event.workflow_run.head_sha }}',
+              per_page: 1
+            });
+            
+            const { data: testRuns } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'test.yml',
+              head_sha: '${{ github.event.workflow_run.head_sha }}',
+              per_page: 1
+            });
+            
+            const buildSuccess = buildRuns.workflow_runs[0]?.conclusion === 'success';
+            const testSuccess = testRuns.workflow_runs[0]?.conclusion === 'success';
+            
+            if (!buildSuccess || !testSuccess) {
+              core.setFailed('Both build and test workflows must succeed before deployment');
+            }
+            
+            console.log(`Build success: ${buildSuccess}, Test success: ${testSuccess}`);
+
+      - uses: actions/checkout@v3
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+          path: ./artifacts
+
       - name: Deploy to production
         run: |
-          # Upload the deployment package
-          scp -o StrictHostKeyChecking=no deployment.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/deployment.tar.gz
+          echo "🚀 Starting deployment..."
 
-          # Extract and activate the new version
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
-            cd ${{ secrets.DEPLOY_PATH }} && \
-            tar -xzf deployment.tar.gz && \
-            rm deployment.tar.gz && \
-            php artisan migrate --force && \
-            php artisan config:cache && \
-            php artisan route:cache && \
-            php artisan view:cache && \
-            echo 'Deployment completed successfully!'
-          "
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Deployment to production completed successfully!"
+          else
+            echo "❌ Deployment failed!"
+          fi
