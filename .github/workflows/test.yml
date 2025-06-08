@@ -51,7 +51,6 @@ jobs:
           
           # Restore other necessary directories
           cp -R deployment/bootstrap ./
-          cp -R deployment/storage ./
 
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.example', '.env');"
