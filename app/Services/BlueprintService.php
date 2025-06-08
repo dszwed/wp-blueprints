@@ -74,4 +74,44 @@ class BlueprintService
 
         return $blueprint;
     }
+
+    public function update(Blueprint $blueprint, array $data, ?User $user = null): Blueprint
+    {
+        // Update only provided fields
+        if (isset($data['name'])) {
+            $blueprint->name = $data['name'];
+        }
+        
+        if (isset($data['description'])) {
+            $blueprint->description = $data['description'];
+        }
+        
+        if (isset($data['status'])) {
+            $blueprint->status = $data['status'];
+        }
+        
+        if (isset($data['steps'])) {
+            $blueprint->steps = $data['steps'];
+        }
+
+        if (isset($data['preferredVersions'])) {
+            if (isset($data['preferredVersions']['php'])) {
+                $blueprint->php_version = $data['preferredVersions']['php'];
+            }
+            
+            if (isset($data['preferredVersions']['wp'])) {
+                $blueprint->wordpress_version = $data['preferredVersions']['wp'];
+            }
+        }
+
+        // If user is provided and blueprint is anonymous, associate it with the user
+        if ($user && $blueprint->is_anonymous) {
+            $blueprint->user_id = $user->id;
+            $blueprint->is_anonymous = false;
+        }
+
+        $blueprint->save();
+
+        return $blueprint;
+    }
 } 
