@@ -38,11 +38,20 @@ jobs:
           name: build-${{ github.sha }}
           path: ./deployment
 
-      - name: Restore vendor directory
+      - name: Restore build files
         run: |
+          # Restore vendor directory
           cp -R deployment/vendor ./
           cp deployment/composer.json ./
           cp deployment/composer.lock ./
+          
+          # Restore Vite build files
+          mkdir -p public/build
+          cp -R deployment/public/build/* public/build/ || true
+          
+          # Restore other necessary directories
+          cp -R deployment/bootstrap ./
+          cp -R deployment/storage ./
 
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.example', '.env');"
