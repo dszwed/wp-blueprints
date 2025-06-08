@@ -34,7 +34,10 @@ interface Blueprint {
         step: string;
         username?: string;
         password?: string;
-        plugin?: string;
+        pluginData?: {
+            resource: string;
+            slug: string;
+        };
     }[];
 }
 
@@ -76,10 +79,13 @@ function BlueprintGenerator({
         },
         steps: initialData?.steps || [
             {
-                step: 'install-plugin',
+                step: 'installPlugin',
                 username: '',
                 password: '',
-                plugin: '',
+                pluginData: {
+                    resource: '',
+                    slug: '',
+                },
             },
         ],
     });
@@ -128,7 +134,15 @@ function BlueprintGenerator({
             ...prev,
             steps: [
                 ...prev.steps,
-                { step: 'login', username: '', password: '', plugin: '' },
+                {
+                    step: 'installPlugin',
+                    username: '',
+                    password: '',
+                    pluginData: {
+                        resource: '',
+                        slug: '',
+                    },
+                },
             ],
         }));
     };
@@ -140,7 +154,11 @@ function BlueprintGenerator({
         }));
     };
 
-    const updateStep = (index: number, field: string, value: string) => {
+    const updateStep = (
+        index: number,
+        field: string,
+        value: string | { resource: string; slug: string },
+    ) => {
         setBlueprint((prev) => ({
             ...prev,
             steps: prev.steps.map((step, i) =>
@@ -234,11 +252,20 @@ function BlueprintGenerator({
         navigator.clipboard.writeText(JSON.stringify(blueprint, null, 2));
     };
 
+    const getBlueprintUrl = (id: string): string => {
+        return route('blueprint.show', { id });
+    };
+
+    const copyBlueprintUrl = () => {
+        if (!savedId) return;
+        const blueprintUrl = getBlueprintUrl(savedId);
+        navigator.clipboard.writeText(blueprintUrl);
+    };
+
     const openInPlayground = () => {
         if (!savedId) return;
-        const blueprintUrl = `${window.location.origin}/blueprint/${savedId}`;
+        const blueprintUrl = getBlueprintUrl(savedId);
         const playgroundUrl = `https://playground.wordpress.net/?blueprint-url=${encodeURIComponent(blueprintUrl)}`;
-        console.log(blueprintUrl);
         window.open(playgroundUrl, '_blank');
     };
 
@@ -268,14 +295,17 @@ function BlueprintGenerator({
             step: string;
             username?: string;
             password?: string;
-            plugin?: string;
+            pluginData?: {
+                resource: string;
+                slug: string;
+            };
         },
         index: number,
     ) => {
         const username = step.username || '';
         const password = step.password || '';
 
-        if (step.step === 'install-plugin') {
+        if (step.step === 'installPlugin') {
             return (
                 <div className="col-span-3">
                     <div className="space-y-4">
@@ -315,11 +345,11 @@ function BlueprintGenerator({
                                         key={plugin.slug}
                                         className="cursor-pointer p-3 hover:bg-gray-50"
                                         onClick={() => {
-                                            updateStep(
-                                                index,
-                                                'plugin',
-                                                plugin.slug,
-                                            );
+                                            updateStep(index, 'pluginData', {
+                                                resource:
+                                                    'wordpress.org/plugins',
+                                                slug: plugin.slug,
+                                            });
                                             setSearchQuery('');
                                             setSearchResults([]);
                                         }}
@@ -332,8 +362,12 @@ function BlueprintGenerator({
                                             ) {
                                                 updateStep(
                                                     index,
-                                                    'plugin',
-                                                    plugin.slug,
+                                                    'pluginData',
+                                                    {
+                                                        resource:
+                                                            'wordpress.org/plugins',
+                                                        slug: plugin.slug,
+                                                    },
                                                 );
                                                 setSearchQuery('');
                                                 setSearchResults([]);
@@ -354,13 +388,13 @@ function BlueprintGenerator({
                             </div>
                         )}
 
-                        {step.plugin && (
+                        {step.pluginData && (
                             <div className="mt-4 rounded-md bg-gray-100 p-3 dark:bg-gray-600">
                                 <div className="text-sm font-medium dark:text-gray-200">
                                     Selected Plugin:
                                 </div>
                                 <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                                    {step.plugin}
+                                    {step.pluginData.slug}
                                 </div>
                             </div>
                         )}
@@ -440,7 +474,15 @@ function BlueprintGenerator({
                                         className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                                     >
                                         <Copy className="mr-2 h-4 w-4" />
-                                        Copy
+                                        Copy JSON
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={copyBlueprintUrl}
+                                        className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                    >
+                                        <Copy className="mr-2 h-4 w-4" />
+                                        Copy URL
                                     </button>
                                     <button
                                         type="button"
@@ -670,10 +712,7 @@ function BlueprintGenerator({
                                                 }
                                                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-indigo-400"
                                             >
-                                                <option value="login">
-                                                    Login
-                                                </option>
-                                                <option value="install-plugin">
+                                                <option value="installPlugin">
                                                     Install Plugin
                                                 </option>
                                             </select>
