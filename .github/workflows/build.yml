@@ -22,14 +22,8 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Copy .env
-        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
-
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Generate key
-        run: php artisan key:generate
 
       - name: Install JS dependencies
         run: npm ci
@@ -40,7 +34,7 @@ jobs:
       - name: Create deployment package
         run: |
           mkdir -p deployment
-          cp -R app bootstrap config database public resources routes storage vendor composer.json composer.lock .env deployment/
+          cp -R app bootstrap config database public resources routes storage vendor composer.json composer.lock deployment/
           # Copy built assets
           cp -R public/build deployment/public/ || true
 
