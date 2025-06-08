@@ -21,7 +21,7 @@ class BlueprintControllerTest extends TestCase
         $user = User::factory()->create();
         
         $response = $this->actingAs($user)
-            ->postJson('/blueprints', [
+            ->post('/blueprints', [
                 'name' => 'Test Blueprint',
                 'status' => 'public',
                 'landingPage' => 'example.com',
@@ -37,36 +37,29 @@ class BlueprintControllerTest extends TestCase
                 ],
             ]);
 
-        $response->assertStatus(201)
-            ->assertJsonStructure([
-                'data' => [
-                    'id',
-                    'name',
-                    'description',
-                    'status',
-                    'php_version',
-                    'wordpress_version',
-                    'steps',
-                    'created_at',
-                    'updated_at',
-                    'is_anonymous',
-                ],
-            ])
-            ->assertJson([
-                'data' => [
-                    'name' => 'Test Blueprint',
-                    'status' => 'public',
-                    'steps' => [
-                        ['step' => 'initialization'],
-                    ],
-                    'is_anonymous' => false,
-                ],
-            ]);
+        $response->assertStatus(302)
+            ->assertRedirect(route('generator'));
+            
+        // Verify blueprint was created in database
+        $this->assertDatabaseHas('blueprints', [
+            'name' => 'Test Blueprint',
+            'status' => 'public',
+            'user_id' => $user->id,
+            'php_version' => PhpVersion::V8_2->value,
+            'wordpress_version' => WordpressVersion::V6_8->value,
+        ]);
+        
+        // Verify session has blueprint data
+        $response->assertSessionHas('data');
+        $sessionData = session('data');
+        $this->assertEquals('Test Blueprint', $sessionData['name']);
+        $this->assertEquals('public', $sessionData['status']);
+        $this->assertFalse($sessionData['is_anonymous']);
     }
 
     public function test_anonymous_user_can_create_blueprint(): void
     {
-        $response = $this->postJson('/blueprints', [
+        $response = $this->post('/blueprints', [
             'name' => 'Anonymous Blueprint',
             'status' => 'private',
             'landingPage' => 'example.com',
@@ -82,36 +75,29 @@ class BlueprintControllerTest extends TestCase
             ],
         ]);
 
-        $response->assertStatus(201)
-            ->assertJsonStructure([
-                'data' => [
-                    'id',
-                    'name',
-                    'description',
-                    'status',
-                    'php_version',
-                    'wordpress_version',
-                    'steps',
-                    'created_at',
-                    'updated_at',
-                    'is_anonymous',
-                ],
-            ])
-            ->assertJson([
-                'data' => [
-                    'name' => 'Anonymous Blueprint',
-                    'status' => 'private',
-                    'steps' => [
-                        ['step' => 'initialization'],
-                    ],
-                    'is_anonymous' => true,
-                ],
-            ]);
+        $response->assertStatus(302)
+            ->assertRedirect(route('generator'));
+            
+        // Verify blueprint was created in database
+        $this->assertDatabaseHas('blueprints', [
+            'name' => 'Anonymous Blueprint',
+            'status' => 'private',
+            'user_id' => null, // Anonymous user
+            'php_version' => PhpVersion::V8_1->value,
+            'wordpress_version' => WordpressVersion::V6_7->value,
+        ]);
+        
+        // Verify session has blueprint data
+        $response->assertSessionHas('data');
+        $sessionData = session('data');
+        $this->assertEquals('Anonymous Blueprint', $sessionData['name']);
+        $this->assertEquals('private', $sessionData['status']);
+        $this->assertTrue($sessionData['is_anonymous']);
     }
 
     public function test_validation_fails_with_invalid_data(): void
     {
-        $response = $this->postJson('/blueprints', [
+        $response = $this->post('/blueprints', [
             'name' => '',
             'status' => 'invalid',
             'landingPage' => '',
@@ -125,8 +111,8 @@ class BlueprintControllerTest extends TestCase
             'steps' => 'not-an-array',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors([
+        $response->assertStatus(302)
+            ->assertSessionHasErrors([
                 'name',
                 'status',
                 'landingPage',
@@ -139,7 +125,7 @@ class BlueprintControllerTest extends TestCase
 
     public function test_validation_error_response_format(): void
     {
-        $response = $this->postJson('/blueprints', [
+        $response = $this->post('/blueprints', [
             'name' => 'Test Blueprint',
             'status' => 'public',
             'landingPage' => '/wp-admin/',
@@ -155,20 +141,13 @@ class BlueprintControllerTest extends TestCase
             ],
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonStructure([
-                'message',
-                'errors' => [
-                    'preferredVersions.wp',
-                ],
-            ])
-            ->assertJson([
-                'message' => 'The WordPress version must be one of: 6.8, 6.7, 6.6, 6.5, 6.4, 6.3, 6.2, 6.1, 6.0, 5.9, 5.8, 5.7, 5.6, 5.5, 5.4, 5.3, 5.2, 5.1, 5.0.',
-                'errors' => [
-                    'preferredVersions.wp' => [
-                        'The WordPress version must be one of: 6.8, 6.7, 6.6, 6.5, 6.4, 6.3, 6.2, 6.1, 6.0, 5.9, 5.8, 5.7, 5.6, 5.5, 5.4, 5.3, 5.2, 5.1, 5.0.',
-                    ],
-                ],
-            ]);
+        $response->assertStatus(302)
+            ->assertSessionHasErrors(['preferredVersions.wp']);
+            
+        $errors = session('errors');
+        $this->assertStringContainsString(
+            'The WordPress version must be one of:',
+            $errors->first('preferredVersions.wp')
+        );
     }
 } 
